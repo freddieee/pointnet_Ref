@@ -9,9 +9,9 @@ import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.utils.data
-import torchvision.datasets as dset
-import torchvision.transforms as transforms
-import torchvision.utils as vutils
+# import torchvision.datasets as dset
+# import torchvision.transforms as transforms
+# import torchvision.utils as vutils
 from torch.autograd import Variable
 from datasets import PartDataset
 from pointnet import PointNetCls
@@ -20,13 +20,15 @@ import torch.nn.functional as F
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batchSize', type=int, default=32, help='input batch size')
+parser.add_argument('--batchSize', type=int, default=16, help='input batch size')
 parser.add_argument('--num_points', type=int, default=2500, help='input batch size')
-parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
+parser.add_argument('--workers', type=int, help='number of data loading workers', default=0)
 parser.add_argument('--nepoch', type=int, default=25, help='number of epochs to train for')
 parser.add_argument('--outf', type=str, default='cls',  help='output folder')
 parser.add_argument('--model', type=str, default = '',  help='model path')
-
+parser.add_argument('--n_views', type=int, default = 13,  help='view numbers')
+parser.add_argument('--lr', type=float, default = 0.01,  help='learning rate')
+parser.add_argument('--momentum', type=float, default = 0.9,  help='momentum')
 opt = parser.parse_args()
 print (opt)
 
@@ -55,14 +57,14 @@ except OSError:
     pass
 
 
-classifier = PointNetCls(k = num_classes, num_points = opt.num_points)
+classifier = PointNetCls(k = num_classes,views=opt.n_views)
 
 
 if opt.model != '':
     classifier.load_state_dict(torch.load(opt.model))
 
 
-optimizer = optim.SGD(classifier.parameters(), lr=0.01, momentum=0.9)
+optimizer = optim.SGD(classifier.parameters(), lr=opt.lr, momentum=opt.momentum)
 classifier.cuda()
 
 num_batch = len(dataset)/opt.batchSize
@@ -72,10 +74,11 @@ for epoch in range(opt.nepoch):
         points, target = data
         points, target = Variable(points), Variable(target[:,0])
         points = points.transpose(2,1)
+        # sys.exit(0)
         points, target = points.cuda(), target.cuda()
         optimizer.zero_grad()
         classifier = classifier.train()
-        pred, _ = classifier(points)
+        pred = classifier(points)
         loss = F.nll_loss(pred, target)
         loss.backward()
         optimizer.step()
@@ -90,7 +93,7 @@ for epoch in range(opt.nepoch):
             points = points.transpose(2,1)
             points, target = points.cuda(), target.cuda()
             classifier = classifier.eval()
-            pred, _ = classifier(points)
+            pred = classifier(points)
             loss = F.nll_loss(pred, target)
             pred_choice = pred.data.max(1)[1]
             correct = pred_choice.eq(target.data).cpu().sum()

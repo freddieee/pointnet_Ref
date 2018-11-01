@@ -97,7 +97,7 @@ class PartDataset(data.Dataset):
         seg = seg[choice]
 
         ref = np.array(self.ref)
-        point_set = self.expand_ref(point_set,ref)
+        # point_set = self.expand_ref(point_set,ref)
 
         #add the reference 
 

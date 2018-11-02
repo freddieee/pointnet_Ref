@@ -33,7 +33,7 @@ def func_miou(num_classes,target,pred_choice):
     return part_ious
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batchSize', type=int, default=4, help='input batch size')
+parser.add_argument('--batchSize', type=int, default=8, help='input batch size')
 parser.add_argument('--num_points', type=int, default=2500, help='input batch size')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=0)
 parser.add_argument('--nepoch', type=int, default=25, help='number of epochs to train for')
@@ -74,10 +74,10 @@ blue = lambda x:'\033[94m' + x + '\033[0m'
 
 
 classifier = PointNetRef3d_for_DenseCls(k = num_classes,views=opt.n_views)
-
+classifier = nn.DataParallel(classifier,device_ids=[0,1])
 if opt.model != '':
     print("Finish Loading")
-    classifier.load_state_dict(torch.load(opt.model))
+    classifier.module.load_state_dict(torch.load(opt.model))
 
 optimizer = optim.SGD(classifier.parameters(), lr=opt.lr, momentum=opt.momentum)
 classifier.cuda()
@@ -125,4 +125,4 @@ for epoch in range(opt.nepoch):
             miou=np.mean(miou_list)
             print('[%d: %d/%d] %s loss: %f accuracy: %f IOU: %f mIOU %f' %(epoch, i, num_batch, blue('test'), loss.item(), correct.item()/float(opt.batchSize*opt.num_points),iou,miou))
     
-    torch.save(classifier.state_dict(), '%s/seg_model_%d.pth' % (opt.outf, epoch))
+    torch.save(classifier.module.state_dict(), '%s/seg_model_%d.pth' % (opt.outf, epoch))

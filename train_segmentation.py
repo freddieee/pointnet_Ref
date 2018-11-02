@@ -42,7 +42,7 @@ parser.add_argument('--n_views', type=int, default = 13,  help='view numbers')
 parser.add_argument('--lr', type=float, default = 0.01,  help='learning rate')
 parser.add_argument('--momentum', type=float, default = 0.9,  help='momentum')
 parser.add_argument('--classType', type=str, default = 'Bag',  help='class')
-
+parser.add_argument('--devices', type=list, default = [0],  help='class')
 
 opt = parser.parse_args()
 print (opt)
@@ -71,12 +71,14 @@ except OSError:
 
 blue = lambda x:'\033[94m' + x + '\033[0m'
 
-
+opt.devices = map(int,opt.devices)
+print(opt.devices)
 classifier = PointNetDenseCls(k = num_classes)
-
 if opt.model != '':
     print("Finish Loading")
     classifier.load_state_dict(torch.load(opt.model))
+classifier = nn.DataParallel(classifier,device_ids=opt.devices)
+
 
 optimizer = optim.SGD(classifier.parameters(), lr=opt.lr, momentum=opt.momentum)
 classifier.cuda()
@@ -124,4 +126,4 @@ for epoch in range(opt.nepoch):
             miou=np.mean(miou_list)
             print('[%d: %d/%d] %s loss: %f accuracy: %f IOU: %f mIOU %f' %(epoch, i, num_batch, blue('test'), loss.item(), correct.item()/float(opt.batchSize*opt.num_points),iou,miou))
     
-    torch.save(classifier.state_dict(), '%s/seg_model_%d.pth' % (opt.outf, epoch))
+    torch.save(classifier.module.state_dict(), '%s/seg_model_%d.pth' % (opt.outf, epoch))

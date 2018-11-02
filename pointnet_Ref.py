@@ -92,6 +92,7 @@ class PointNetfeat_for_3d(nn.Module):
         self.r_mlps=list()
         for r in range(views):
             self.r_mlps.append(N_Views_MLP_for_3d(self.views).cuda())
+        self.r_mlps = nn.ModuleList(self.r_mlps)
         # self.r_mlps = nn.ModuleList(self.r_mlps)
     def forward(self, x):
         #x is in B*R*N*6
